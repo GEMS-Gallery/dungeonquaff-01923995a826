@@ -1,66 +1,98 @@
-import { backend } from 'declarations/backend';
+import { Actor, HttpAgent } from "@dfinity/agent";
 
-const gameBoard = document.getElementById('game-board');
-const healthDisplay = document.getElementById('health');
-const messageDisplay = document.getElementById('message');
+const agent = new HttpAgent();
+let gameActor;
 
-const GRID_SIZE = 10;
+async function initActor() {
+  try {
+    const canisterId = process.env.GAME_CANISTER_ID;
+    if (!canisterId) {
+      throw new Error("Canister ID not found");
+    }
+    gameActor = Actor.createActor(
+      // Since we don't have the idlFactory, we'll use a minimal interface
+      ({ IDL }) => {
+        return IDL.Service({
+          initGame: IDL.Func([], [], []),
+          getGameState: IDL.Func([], [IDL.Record({
+            playerX: IDL.Nat,
+            playerY: IDL.Nat,
+            playerHealth: IDL.Nat,
+            monsters: IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Nat)),
+            potions: IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Nat))
+          })], ['query']),
+          movePlayer: IDL.Func([IDL.Int, IDL.Int], [IDL.Text], [])
+        });
+      },
+      { agent, canisterId }
+    );
+  } catch (error) {
+    console.error("Failed to create actor:", error);
+    alert("Failed to initialize the game. Please refresh and try again.");
+  }
+}
+
+const gridSize = 10;
+const gridElement = document.getElementById("game-grid");
+const playerHealthElement = document.getElementById("player-health");
+const playerXElement = document.getElementById("player-x");
+const playerYElement = document.getElementById("player-y");
 
 async function initGame() {
-    await backend.initGame();
+  await initActor();
+  if (gameActor) {
+    await gameActor.initGame();
     updateGameState();
+  }
 }
 
 async function updateGameState() {
-    const state = await backend.getGameState();
-    renderGameBoard(state);
-    healthDisplay.textContent = state.playerHealth;
+  if (gameActor) {
+    const gameState = await gameActor.getGameState();
+    renderGrid(gameState);
+    updatePlayerInfo(gameState);
+  }
 }
 
-function renderGameBoard(state) {
-    gameBoard.innerHTML = '';
-    for (let y = 0; y < GRID_SIZE; y++) {
-        for (let x = 0; x < GRID_SIZE; x++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            
-            if (x === state.playerX && y === state.playerY) {
-                cell.classList.add('player');
-                cell.textContent = '@';
-            } else if (state.monsters.some(m => m[0] === x && m[1] === y)) {
-                cell.classList.add('monster');
-                cell.textContent = 'M';
-            } else if (state.potions.some(p => p[0] === x && p[1] === y)) {
-                cell.classList.add('potion');
-                cell.textContent = 'P';
-            }
-            
-            gameBoard.appendChild(cell);
-        }
+function renderGrid(gameState) {
+  gridElement.innerHTML = "";
+  for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < gridSize; x++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      if (x === gameState.playerX && y === gameState.playerY) {
+        cell.classList.add("player");
+      } else if (gameState.monsters.some(m => m[0] === x && m[1] === y)) {
+        cell.classList.add("monster");
+      } else if (gameState.potions.some(p => p[0] === x && p[1] === y)) {
+        cell.classList.add("potion");
+      }
+      gridElement.appendChild(cell);
     }
+  }
+}
+
+function updatePlayerInfo(gameState) {
+  playerHealthElement.textContent = gameState.playerHealth;
+  playerXElement.textContent = gameState.playerX;
+  playerYElement.textContent = gameState.playerY;
 }
 
 async function movePlayer(dx, dy) {
-    const result = await backend.movePlayer(dx, dy);
-    messageDisplay.textContent = result;
-    updateGameState();
+  if (gameActor) {
+    const result = await gameActor.movePlayer(dx, dy);
+    if (result === "Game Over") {
+      alert("Game Over!");
+      initGame();
+    } else {
+      updateGameState();
+    }
+  }
 }
 
-document.addEventListener('keydown', async (event) => {
-    switch (event.key) {
-        case 'ArrowUp':
-            await movePlayer(0, -1);
-            break;
-        case 'ArrowDown':
-            await movePlayer(0, 1);
-            break;
-        case 'ArrowLeft':
-            await movePlayer(-1, 0);
-            break;
-        case 'ArrowRight':
-            await movePlayer(1, 0);
-            break;
-    }
-});
+document.getElementById("up").addEventListener("click", () => movePlayer(0, -1));
+document.getElementById("down").addEventListener("click", () => movePlayer(0, 1));
+document.getElementById("left").addEventListener("click", () => movePlayer(-1, 0));
+document.getElementById("right").addEventListener("click", () => movePlayer(1, 0));
 
 initGame();

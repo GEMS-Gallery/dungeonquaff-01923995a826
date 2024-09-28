@@ -3,15 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rogue-like Game</title>
-    <link rel="stylesheet" href="index.css">
+    <title>Dungeon Crawler Game</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="game-container">
-        <div id="game-board"></div>
+        <div id="game-grid"></div>
         <div id="game-info">
-            <p>Health: <span id="health"></span></p>
-            <p id="message"></p>
+            <p>Health: <span id="player-health"></span></p>
+            <p>Position: (<span id="player-x"></span>, <span id="player-y"></span>)</p>
+        </div>
+        <div id="controls">
+            <button id="up">Up</button>
+            <button id="left">Left</button>
+            <button id="right">Right</button>
+            <button id="down">Down</button>
         </div>
     </div>
     <script type="module" src="index.js"></script>

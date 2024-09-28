@@ -1,0 +1,40 @@
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#game-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 30px);
+    grid-template-rows: repeat(10, 30px);
+    gap: 1px;
+    background-color: #ccc;
+    border: 1px solid #999;
+}
+
+.cell {
+    width: 30px;
+    height: 30px;
+    background-color: #fff;
+}
+
+.player {
+    background-color: blue;
+}
+
+.monster {
+    background-color: red;
+}
+
+.potion {
+    background-color: green;
+}
+
+#controls {
+    margin-top: 20px;
+}
+
+button {
+    margin: 0 5px;
+}
