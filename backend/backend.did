@@ -1,0 +1,18 @@
+service : {
+  getGameState: () ->
+   (record {
+      monsters: vec record {
+                      nat;
+                      nat;
+                    };
+      playerHealth: nat;
+      playerX: nat;
+      playerY: nat;
+      potions: vec record {
+                     nat;
+                     nat;
+                   };
+    }) query;
+  initGame: () -> ();
+  movePlayer: (int, int) -> (text);
+}
