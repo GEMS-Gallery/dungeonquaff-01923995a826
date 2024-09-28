@@ -1,34 +1,47 @@
 import { Actor, HttpAgent } from "@dfinity/agent";
+import { IDL } from "@dfinity/candid";
 
-const agent = new HttpAgent();
+const isLocalNetwork = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1');
+const canisterId = isLocalNetwork ? process.env.LOCAL_GAME_CANISTER_ID : process.env.GAME_CANISTER_ID;
+
 let gameActor;
+
+// Define the interface for the game canister
+const idlFactory = ({ IDL }) => {
+  return IDL.Service({
+    'initGame': IDL.Func([], [], []),
+    'getGameState': IDL.Func([], [IDL.Record({
+      'playerX': IDL.Nat,
+      'playerY': IDL.Nat,
+      'playerHealth': IDL.Nat,
+      'monsters': IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Nat)),
+      'potions': IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Nat))
+    })], ['query']),
+    'movePlayer': IDL.Func([IDL.Int, IDL.Int], [IDL.Text], [])
+  });
+};
 
 async function initActor() {
   try {
-    const canisterId = process.env.GAME_CANISTER_ID;
+    const agent = new HttpAgent({ host: isLocalNetwork ? "http://localhost:8000" : "https://ic0.app" });
+    
+    if (isLocalNetwork) {
+      await agent.fetchRootKey();
+    }
+
     if (!canisterId) {
       throw new Error("Canister ID not found");
     }
-    gameActor = Actor.createActor(
-      // Since we don't have the idlFactory, we'll use a minimal interface
-      ({ IDL }) => {
-        return IDL.Service({
-          initGame: IDL.Func([], [], []),
-          getGameState: IDL.Func([], [IDL.Record({
-            playerX: IDL.Nat,
-            playerY: IDL.Nat,
-            playerHealth: IDL.Nat,
-            monsters: IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Nat)),
-            potions: IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Nat))
-          })], ['query']),
-          movePlayer: IDL.Func([IDL.Int, IDL.Int], [IDL.Text], [])
-        });
-      },
-      { agent, canisterId }
-    );
+
+    gameActor = Actor.createActor(idlFactory, {
+      agent,
+      canisterId,
+    });
+
+    console.log("Actor created successfully");
   } catch (error) {
     console.error("Failed to create actor:", error);
-    alert("Failed to initialize the game. Please refresh and try again.");
+    throw error;
   }
 }
 
@@ -37,20 +50,32 @@ const gridElement = document.getElementById("game-grid");
 const playerHealthElement = document.getElementById("player-health");
 const playerXElement = document.getElementById("player-x");
 const playerYElement = document.getElementById("player-y");
+const statusElement = document.getElementById("status");
 
 async function initGame() {
-  await initActor();
-  if (gameActor) {
+  setStatus("Initializing game...");
+  try {
+    await initActor();
     await gameActor.initGame();
-    updateGameState();
+    setStatus("Game initialized");
+    await updateGameState();
+  } catch (error) {
+    console.error("Failed to initialize game:", error);
+    setStatus("Failed to initialize game. Please refresh and try again.");
   }
 }
 
 async function updateGameState() {
   if (gameActor) {
-    const gameState = await gameActor.getGameState();
-    renderGrid(gameState);
-    updatePlayerInfo(gameState);
+    try {
+      const gameState = await gameActor.getGameState();
+      renderGrid(gameState);
+      updatePlayerInfo(gameState);
+      setStatus("Game state updated");
+    } catch (error) {
+      console.error("Failed to update game state:", error);
+      setStatus("Failed to update game state");
+    }
   }
 }
 
@@ -78,14 +103,25 @@ function updatePlayerInfo(gameState) {
   playerYElement.textContent = gameState.playerY;
 }
 
+function setStatus(message) {
+  statusElement.textContent = message;
+}
+
 async function movePlayer(dx, dy) {
   if (gameActor) {
-    const result = await gameActor.movePlayer(dx, dy);
-    if (result === "Game Over") {
-      alert("Game Over!");
-      initGame();
-    } else {
-      updateGameState();
+    try {
+      setStatus("Moving player...");
+      const result = await gameActor.movePlayer(dx, dy);
+      if (result === "Game Over") {
+        setStatus("Game Over!");
+        await initGame();
+      } else {
+        await updateGameState();
+        setStatus("Move successful");
+      }
+    } catch (error) {
+      console.error("Failed to move player:", error);
+      setStatus("Failed to move player");
     }
   }
 }
