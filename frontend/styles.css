@@ -1,16 +1,24 @@
-#game-container {
+body {
+    font-family: Arial, sans-serif;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+}
+
+#game-container {
+    text-align: center;
 }
 
 #game-grid {
-    display: grid;
+    display: inline-grid;
     grid-template-columns: repeat(10, 30px);
-    grid-template-rows: repeat(10, 30px);
-    gap: 1px;
+    grid-gap: 1px;
     background-color: #ccc;
     border: 1px solid #999;
+    margin-bottom: 20px;
 }
 
 .cell {
@@ -19,22 +27,15 @@
     background-color: #fff;
 }
 
-.player {
-    background-color: blue;
-}
+.player { background-color: blue; }
+.monster { background-color: red; }
+.potion { background-color: green; }
 
-.monster {
-    background-color: red;
-}
-
-.potion {
-    background-color: green;
-}
-
-#controls {
-    margin-top: 20px;
-}
-
-button {
+#controls button {
     margin: 0 5px;
+}
+
+#status {
+    margin-top: 20px;
+    font-weight: bold;
 }
